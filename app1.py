@@ -334,7 +334,23 @@ if run:
             use_container_width=True,
             hide_index=True
         )
+# ======================================================
+        # BIỂU ĐỒ
+        # ======================================================
 
+        st.subheader("📈 Trực quan khoản vay")
+
+        # 🚨 DÒNG NÀY ĐỂ KHẮC PHỤC LỖI (Tạo 2 cột)
+        col_chart1, col_chart2 = st.columns(2)
+
+        # ------------------------------
+        # Biểu đồ đường (Dư nợ theo năm)
+        # ------------------------------
+        with col_chart1:
+            # 1. Lọc dữ liệu lấy dư nợ vào cuối mỗi năm (Tháng chia hết cho 12)
+            yearly_schedule = schedule[schedule["Tháng"] % 12 == 0].copy()
+            
+            # ... (phần code vẽ biểu đồ bên trong) ...
         # ------------------------------
         # Biểu đồ đường (Dư nợ theo năm)
         # ------------------------------
