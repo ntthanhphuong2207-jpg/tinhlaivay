@@ -128,7 +128,7 @@ purpose=st.sidebar.selectbox(
 )
 
 loan=st.sidebar.number_input(
-    "Số tiền vay",
+    "Số tiền vay (triệu đồng)",
     min_value=1.0,
     value=500.0,
     step=50.0
@@ -152,7 +152,7 @@ years = st.sidebar.slider(
 month = years * 12
 
 income=st.sidebar.number_input(
-    "Thu nhập hàng tháng",
+    "Thu nhập hàng tháng (triệu đồng)",
     min_value=1.0,
     value=25.0
 )
