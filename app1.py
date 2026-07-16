@@ -566,7 +566,7 @@ if run:
     if validate():
         
         # Thêm dòng này để gọi hiệu ứng tuyết rơi
-        st.coin()
+        st.balloons()
 
         if method == "Trả gốc đều":
             schedule, total_interest = equal_principal(loan, interest, month)
