@@ -1,21 +1,22 @@
 # ==========================================================
 # APP TÍNH TOÁN KHOẢN VAY NGÂN HÀNG
 # Môn: Công nghệ tài chính
-# Tác giả: ...
+# Tác giả: Sinh viên
+# Framework: Streamlit
+# Đơn vị: Triệu đồng
 # ==========================================================
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
-from io import BytesIO
+import plotly.graph_objects as go
 
 # ----------------------------------------------------------
 # CẤU HÌNH TRANG
 # ----------------------------------------------------------
 
 st.set_page_config(
-    page_title="Ứng dụng tính khoản vay",
+    page_title="Loan Calculator",
     page_icon="🏦",
     layout="wide"
 )
@@ -28,16 +29,23 @@ st.markdown("""
 <style>
 
 .main{
-    background-color:#f8fafc;
+    background:#f5f7fb;
 }
 
-.metric-container{
-    padding:15px;
-    border-radius:12px;
+.block-container{
+    padding-top:2rem;
 }
 
 h1,h2,h3{
     color:#003366;
+}
+
+div[data-testid="metric-container"]{
+    background:white;
+    border-radius:15px;
+    padding:18px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 3px 8px rgba(0,0,0,.08);
 }
 
 .stButton>button{
@@ -47,148 +55,204 @@ h1,h2,h3{
     font-weight:bold;
 }
 
+footer{
+    visibility:hidden;
+}
+
 </style>
-""", unsafe_allow_html=True)
+""",unsafe_allow_html=True)
 
 # ----------------------------------------------------------
-# TIÊU ĐỀ
+# HÀM ĐỊNH DẠNG TIỀN
 # ----------------------------------------------------------
 
-st.title("🏦 Ứng dụng tính toán khoản vay")
+def money(x):
+
+    text=f"{x:,.2f}"
+
+    text=text.replace(",", "X")
+    text=text.replace(".", ",")
+    text=text.replace("X",".")
+
+    return text+" triệu đồng"
+
+# ----------------------------------------------------------
+# GỢI Ý LÃI SUẤT
+# ----------------------------------------------------------
+
+rate_default={
+
+    "Mua nhà":7.5,
+
+    "Mua xe":8.5,
+
+    "Tiêu dùng":12.0,
+
+    "Kinh doanh":9.0,
+
+    "Khác":10.0
+
+}
+
+# ----------------------------------------------------------
+# HEADER
+# ----------------------------------------------------------
+
+st.title("🏦 ỨNG DỤNG TÍNH TOÁN KHOẢN VAY")
 
 st.write("""
-Ứng dụng hỗ trợ tính toán khoản vay ngân hàng theo hai phương thức trả nợ:
+Ứng dụng hỗ trợ tính toán khoản vay theo **hai phương thức trả nợ**.
 
 - Trả gốc đều
 - Trả góp đều (Annuity)
 
-Đơn vị nhập liệu: **Triệu đồng**
+**Đơn vị:** Triệu đồng
 """)
 
-# ==========================================================
+# ----------------------------------------------------------
 # SIDEBAR
-# ==========================================================
+# ----------------------------------------------------------
 
-st.sidebar.header("Nhập thông tin khoản vay")
+st.sidebar.header("📋 Thông tin khoản vay")
 
-loan_type = st.sidebar.selectbox(
+purpose=st.sidebar.selectbox(
+
     "Mục đích vay",
-    [
-        "Mua nhà",
-        "Mua xe",
-        "Tiêu dùng",
-        "Kinh doanh",
-        "Khác"
-    ]
+
+    list(rate_default.keys())
+
 )
 
-loan_amount = st.sidebar.number_input(
-    "Số tiền vay (triệu đồng)",
+loan=st.sidebar.number_input(
+
+    "Số tiền vay",
+
     min_value=1.0,
+
     value=500.0,
-    step=10.0
+
+    step=50.0
+
 )
 
-interest = st.sidebar.number_input(
+interest=st.sidebar.number_input(
+
     "Lãi suất (%/năm)",
-    min_value=0.1,
-    value=8.0,
+
+    value=rate_default[purpose],
+
     step=0.1
+
 )
 
-months = st.sidebar.number_input(
+month=st.sidebar.slider(
+
     "Thời hạn vay (tháng)",
-    min_value=1,
-    value=120
+
+    6,
+
+    360,
+
+    120
+
 )
 
-income = st.sidebar.number_input(
-    "Thu nhập hàng tháng (triệu đồng)",
+income=st.sidebar.number_input(
+
+    "Thu nhập hàng tháng",
+
     min_value=1.0,
-    value=25.0,
-    step=1.0
+
+    value=25.0
+
 )
 
-method = st.sidebar.radio(
-    "Phương thức trả nợ",
-    (
+method=st.sidebar.radio(
+
+    "Phương thức",
+
+    [
+
         "Trả gốc đều",
+
         "Trả góp đều"
-    )
+
+    ]
+
 )
 
-calculate = st.sidebar.button("Tính toán")
+st.sidebar.info(
 
-# ==========================================================
-# HÀM KIỂM TRA
-# ==========================================================
+    f"💡 Lãi suất tham khảo: **{rate_default[purpose]}%/năm**"
 
-def validate_input():
+)
 
-    if loan_amount <= 0:
+run=st.sidebar.button("📊 TÍNH TOÁN")
+
+# ----------------------------------------------------------
+# KIỂM TRA DỮ LIỆU
+# ----------------------------------------------------------
+
+def validate():
+
+    if loan<=0:
+
         st.error("Số tiền vay không hợp lệ")
+
         return False
 
-    if interest <= 0:
+    if interest<=0:
+
         st.error("Lãi suất không hợp lệ")
+
         return False
 
-    if months <= 0:
-        st.error("Thời hạn vay không hợp lệ")
-        return False
+    if income<=0:
 
-    if income <= 0:
         st.error("Thu nhập không hợp lệ")
+
         return False
+
+    if interest>20:
+
+        st.warning("⚠ Lãi suất khá cao.")
 
     return True
-
-# ==========================================================
-# HÀM TÍNH GỐC ĐỀU
+    # ==========================================================
+# HÀM TÍNH TRẢ GỐC ĐỀU
 # ==========================================================
 
 def equal_principal(principal, annual_rate, months):
 
     monthly_rate = annual_rate / 12 / 100
-
-    principal_payment = principal / months
+    principal_month = principal / months
 
     remain = principal
-
+    total_interest = 0
     schedule = []
 
-    total_interest = 0
+    for m in range(1, months + 1):
 
-    for month in range(1, months + 1):
+        interest = remain * monthly_rate
+        payment = principal_month + interest
 
-        interest_payment = remain * monthly_rate
+        remain -= principal_month
+        remain = max(remain, 0)
 
-        total_payment = principal_payment + interest_payment
-
-        remain -= principal_payment
-
-        if remain < 0:
-            remain = 0
-
-        total_interest += interest_payment
+        total_interest += interest
 
         schedule.append({
 
-            "Tháng": month,
-
-            "Gốc": round(principal_payment,2),
-
-            "Lãi": round(interest_payment,2),
-
-            "Tổng thanh toán": round(total_payment,2),
-
-            "Dư nợ": round(remain,2)
+            "Tháng": m,
+            "Gốc": round(principal_month, 2),
+            "Lãi": round(interest, 2),
+            "Thanh toán": round(payment, 2),
+            "Dư nợ": round(remain, 2)
 
         })
 
-    df = pd.DataFrame(schedule)
+    return pd.DataFrame(schedule), total_interest
 
-    return df, total_interest
 
 # ==========================================================
 # HÀM TÍNH TRẢ GÓP ĐỀU (ANNUITY)
@@ -196,388 +260,513 @@ def equal_principal(principal, annual_rate, months):
 
 def annuity(principal, annual_rate, months):
 
-    monthly_rate = annual_rate / 12 / 100
+    r = annual_rate / 12 / 100
 
-    payment = principal * monthly_rate * (1 + monthly_rate) ** months
-
-    payment /= ((1 + monthly_rate) ** months - 1)
+    payment = principal * r * (1 + r) ** months
+    payment /= ((1 + r) ** months - 1)
 
     remain = principal
-
     total_interest = 0
 
     schedule = []
 
-    for month in range(1, months + 1):
+    for m in range(1, months + 1):
 
-        interest_payment = remain * monthly_rate
+        interest = remain * r
+        principal_pay = payment - interest
 
-        principal_payment = payment - interest_payment
+        remain -= principal_pay
+        remain = max(remain, 0)
 
-        remain -= principal_payment
-
-        if remain < 0:
-            remain = 0
-
-        total_interest += interest_payment
+        total_interest += interest
 
         schedule.append({
 
-            "Tháng": month,
-
-            "Gốc": round(principal_payment,2),
-
-            "Lãi": round(interest_payment,2),
-
-            "Tổng thanh toán": round(payment,2),
-
-            "Dư nợ": round(remain,2)
+            "Tháng": m,
+            "Gốc": round(principal_pay, 2),
+            "Lãi": round(interest, 2),
+            "Thanh toán": round(payment, 2),
+            "Dư nợ": round(remain, 2)
 
         })
 
-    df = pd.DataFrame(schedule)
+    return pd.DataFrame(schedule), total_interest
 
-    return df, total_interest
 
 # ==========================================================
-# CHỌN PHƯƠNG THỨC TÍNH
+# XỬ LÝ KHI NHẤN NÚT TÍNH TOÁN
 # ==========================================================
 
-if calculate:
+if run:
 
-    if validate_input():
+    if validate():
 
         if method == "Trả gốc đều":
 
             schedule, total_interest = equal_principal(
-                loan_amount,
+
+                loan,
                 interest,
-                months
+                month
+
             )
 
         else:
 
             schedule, total_interest = annuity(
-                loan_amount,
+
+                loan,
                 interest,
-                months
+                month
+
             )
 
-        total_payment = loan_amount + total_interest
-              # ==========================================================
-        # DASHBOARD TỔNG QUAN
-        # ==========================================================
+        total_payment = loan + total_interest
 
-        st.divider()
-        st.subheader("📊 Kết quả tính toán")
+        first_payment = schedule.iloc[0]["Thanh toán"]
 
-        first_payment = schedule.iloc[0]["Tổng thanh toán"]
-        last_payment = schedule.iloc[-1]["Tổng thanh toán"]
+        last_payment = schedule.iloc[-1]["Thanh toán"]
 
-        col1, col2, col3, col4, col5 = st.columns(5)
+        dti = first_payment / income * 100
 
-        with col1:
-            st.metric(
-                "💰 Tiền vay",
-                f"{loan_amount:,.2f} triệu"
-            )
 
-        with col2:
-            st.metric(
-                "💸 Tổng lãi",
-                f"{total_interest:,.2f} triệu"
-            )
+        # ======================================================
+        # DASHBOARD
+        # ======================================================
 
-        with col3:
-            st.metric(
-                "💵 Tổng phải trả",
-                f"{total_payment:,.2f} triệu"
-            )
+        st.subheader("📊 KẾT QUẢ TÍNH TOÁN")
 
-        with col4:
-            st.metric(
-                "📅 Tháng đầu",
-                f"{first_payment:,.2f} triệu"
-            )
+        c1, c2, c3, c4, c5 = st.columns(5)
 
-        with col5:
-            st.metric(
-                "🏁 Tháng cuối",
-                f"{last_payment:,.2f} triệu"
-            )
+        c1.metric(
 
-        st.divider()
+            "💰 Tiền vay",
 
-        # ==========================================================
-        # THÔNG TIN KHOẢN VAY
-        # ==========================================================
+            money(loan)
 
-        info1, info2 = st.columns(2)
-
-        with info1:
-
-            st.info(f"""
-**Mục đích vay:** {loan_type}
-
-**Phương thức trả nợ:** {method}
-
-**Lãi suất:** {interest:.2f}%/năm
-""")
-
-        with info2:
-
-            monthly_rate = interest / 12
-
-            st.success(f"""
-**Số tiền vay:** {loan_amount:,.2f} triệu đồng
-
-**Thời hạn:** {months} tháng
-
-**Lãi suất tháng:** {monthly_rate:.3f}%
-""")
-
-        st.divider()
-
-        # ==========================================================
-        # BẢNG LỊCH TRẢ NỢ
-        # ==========================================================
-
-        st.subheader("📑 Lịch trả nợ")
-
-        schedule_display = schedule.copy()
-
-        schedule_display["Gốc"] = schedule_display["Gốc"].map(
-            lambda x: f"{x:,.2f}"
         )
 
-        schedule_display["Lãi"] = schedule_display["Lãi"].map(
-            lambda x: f"{x:,.2f}"
+        c2.metric(
+
+            "💸 Tổng lãi",
+
+            money(total_interest)
+
         )
 
-        schedule_display["Tổng thanh toán"] = schedule_display[
-            "Tổng thanh toán"
-        ].map(lambda x: f"{x:,.2f}")
+        c3.metric(
 
-        schedule_display["Dư nợ"] = schedule_display[
-            "Dư nợ"
-        ].map(lambda x: f"{x:,.2f}")
+            "💳 Tổng thanh toán",
+
+            money(total_payment)
+
+        )
+
+        c4.metric(
+
+            "📅 Tháng đầu",
+
+            money(first_payment)
+
+        )
+
+        c5.metric(
+
+            "🏁 Tháng cuối",
+
+            money(last_payment)
+
+        )
+
+
+        # ======================================================
+        # SO SÁNH HAI PHƯƠNG THỨC
+        # ======================================================
+
+        principal_df, principal_interest = equal_principal(
+
+            loan,
+            interest,
+            month
+
+        )
+
+        annuity_df, annuity_interest = annuity(
+
+            loan,
+            interest,
+            month
+
+        )
+
+        compare = pd.DataFrame({
+
+            "Tiêu chí": [
+
+                "Tổng tiền lãi",
+
+                "Tổng thanh toán",
+
+                "Khoản trả tháng đầu"
+
+            ],
+
+            "Trả gốc đều": [
+
+                money(principal_interest),
+
+                money(loan + principal_interest),
+
+                money(principal_df.iloc[0]["Thanh toán"])
+
+            ],
+
+            "Trả góp đều": [
+
+                money(annuity_interest),
+
+                money(loan + annuity_interest),
+
+                money(annuity_df.iloc[0]["Thanh toán"])
+
+            ]
+
+        })
+
+        st.subheader("⚖️ So sánh hai phương thức trả nợ")
 
         st.dataframe(
-            schedule_display,
+
+            compare,
+
             use_container_width=True,
-            hide_index=True,
-            height=500
+
+            hide_index=True
+
+        )
+                # ======================================================
+        # BẢNG LỊCH TRẢ NỢ
+        # ======================================================
+
+        st.subheader("📋 Lịch trả nợ theo từng tháng")
+
+        display_schedule = schedule.copy()
+
+        display_schedule["Gốc"] = display_schedule["Gốc"].apply(money)
+        display_schedule["Lãi"] = display_schedule["Lãi"].apply(money)
+        display_schedule["Thanh toán"] = display_schedule["Thanh toán"].apply(money)
+        display_schedule["Dư nợ"] = display_schedule["Dư nợ"].apply(money)
+
+        st.dataframe(
+            display_schedule,
+            use_container_width=True,
+            hide_index=True
         )
 
-        st.divider()
 
-        # ==========================================================
-        # BIỂU ĐỒ DƯ NỢ
-        # ==========================================================
 
-        st.subheader("📉 Biểu đồ dư nợ giảm dần")
+        # ======================================================
+        # BIỂU ĐỒ
+        # ======================================================
 
-        fig = px.line(
-            schedule,
-            x="Tháng",
-            y="Dư nợ",
-            markers=True,
-            title="Dư nợ còn lại theo từng tháng"
-        )
+        st.subheader("📈 Trực quan khoản vay")
 
-        fig.update_layout(
-            xaxis_title="Tháng",
-            yaxis_title="Triệu đồng",
-            height=500
-        )
+        col_chart1, col_chart2 = st.columns(2)
 
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
 
-        st.divider()
 
-        # ==========================================================
-        # ĐÁNH GIÁ KHẢ NĂNG TRẢ NỢ
-        # ==========================================================
+        # ------------------------------
+        # Biểu đồ đường
+        # ------------------------------
 
-        st.subheader("📝 Đánh giá khả năng trả nợ")
+        with col_chart1:
 
-        payment_ratio = first_payment / income * 100
-
-        colA, colB = st.columns(2)
-
-        with colA:
-
-            st.metric(
-                "Thu nhập hàng tháng",
-                f"{income:,.2f} triệu"
+            fig = px.line(
+                schedule,
+                x="Tháng",
+                y="Dư nợ",
+                markers=True,
+                title="Dư nợ giảm theo thời gian"
             )
 
-        with colB:
-
-            st.metric(
-                "DTI",
-                f"{payment_ratio:.2f}%"
+            fig.update_layout(
+                height=420,
+                xaxis_title="Tháng",
+                yaxis_title="Triệu đồng"
             )
 
-        if payment_ratio <= 40:
+            st.plotly_chart(
+                fig,
+                use_container_width=True
+            )
 
-            st.success(f"""
-### 🟢 An toàn
 
-Khoản thanh toán tháng đầu chiếm **{payment_ratio:.2f}%**
-thu nhập.
 
-Khả năng trả nợ được đánh giá **tốt**.
+        # ------------------------------
+        # Biểu đồ tròn
+        # ------------------------------
+
+        with col_chart2:
+
+            pie = pd.DataFrame({
+
+                "Khoản mục":[
+
+                    "Tiền gốc",
+
+                    "Tiền lãi"
+
+                ],
+
+                "Giá trị":[
+
+                    loan,
+
+                    total_interest
+
+                ]
+
+            })
+
+            fig2 = px.pie(
+
+                pie,
+
+                names="Khoản mục",
+
+                values="Giá trị",
+
+                hole=0.45,
+
+                title="Cơ cấu gốc và lãi"
+
+            )
+
+            fig2.update_traces(
+
+                textposition="inside",
+
+                textinfo="percent+label"
+
+            )
+
+            fig2.update_layout(
+                height=420
+            )
+
+            st.plotly_chart(
+                fig2,
+                use_container_width=True
+            )
+
+
+
+        # ======================================================
+        # DTI
+        # ======================================================
+
+        st.subheader("💼 Đánh giá khả năng trả nợ")
+
+        st.write(
+            f"**DTI = {dti:.2f}%**"
+        )
+
+        st.progress(
+            min(dti / 100,1.0)
+        )
+
+
+
+        if dti <= 40:
+
+            st.success(
+                "🟢 Khả năng trả nợ tốt."
+            )
+
+        elif dti <= 60:
+
+            st.warning(
+                "🟡 Cần cân nhắc thêm về khả năng trả nợ."
+            )
+
+        else:
+
+            st.error(
+                "🔴 Rủi ro cao. Khoản thanh toán chiếm tỷ trọng lớn trong thu nhập."
+            )
+
+
+
+        # ======================================================
+        # NHẬN XÉT TỰ ĐỘNG
+        # ======================================================
+
+        st.subheader("📝 Nhận xét")
+
+        if method == "Trả góp đều":
+
+            method_text = "trả góp đều"
+
+        else:
+
+            method_text = "trả gốc đều"
+
+
+        comment = f"""
+Khoản vay **{money(loan)}**
+với thời hạn **{month} tháng**,
+lãi suất **{interest:.2f}%/năm**
+theo phương thức **{method_text}**
+có tổng tiền lãi là **{money(total_interest)}**.
+
+Khoản thanh toán tháng đầu là **{money(first_payment)}**,
+chiếm **{dti:.2f}%** thu nhập hàng tháng.
+"""
+
+        st.info(comment)
+                # ======================================================
+        # GỢI Ý TÀI CHÍNH
+        # ======================================================
+
+        st.subheader("💡 Gợi ý tài chính")
+
+        if dti <= 40:
+
+            st.success("""
+Khả năng trả nợ đang ở mức **an toàn**.
+
+Bạn hoàn toàn có thể duy trì khoản vay này nếu thu nhập ổn định.
 """)
 
-        elif payment_ratio <= 60:
+        elif dti <= 60:
 
-            st.warning(f"""
-### 🟡 Cần cân nhắc
+            st.warning("""
+Khoản vay ở mức **chấp nhận được**.
 
-Khoản thanh toán tháng đầu chiếm **{payment_ratio:.2f}%**
-thu nhập.
+Bạn nên:
 
-Bạn nên cân nhắc giảm số tiền vay hoặc kéo dài thời hạn.
+- Tăng thời hạn vay để giảm số tiền trả hàng tháng.
+- Chuẩn bị quỹ dự phòng từ 3–6 tháng chi tiêu.
+- Hạn chế phát sinh thêm các khoản vay mới.
 """)
 
         else:
 
-            st.error(f"""
-### 🔴 Rủi ro cao
+            st.error("""
+Khoản vay có **rủi ro khá cao**.
 
-Khoản thanh toán tháng đầu chiếm **{payment_ratio:.2f}%**
-thu nhập.
+Khuyến nghị:
 
-Nguy cơ áp lực tài chính lớn.
-""")
-                  # ==========================================================
-        # XUẤT EXCEL
-        # ==========================================================
-
-        st.divider()
-        st.subheader("📥 Xuất lịch trả nợ")
-
-        def convert_excel(df):
-
-            output = BytesIO()
-
-            with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name="Lich tra no"
-                )
-
-            output.seek(0)
-
-            return output
-
-        excel_file = convert_excel(schedule)
-
-        st.download_button(
-            label="📥 Tải lịch trả nợ (.xlsx)",
-            data=excel_file,
-            file_name="Lich_tra_no.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        # ==========================================================
-        # THỐNG KÊ NHANH
-        # ==========================================================
-
-        st.divider()
-        st.subheader("📈 Thống kê nhanh")
-
-        avg_payment = schedule["Tổng thanh toán"].mean()
-        max_interest = schedule["Lãi"].max()
-        min_interest = schedule["Lãi"].min()
-
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            st.metric(
-                "Thanh toán TB",
-                f"{avg_payment:,.2f} triệu"
-            )
-
-        with c2:
-            st.metric(
-                "Lãi cao nhất",
-                f"{max_interest:,.2f} triệu"
-            )
-
-        with c3:
-            st.metric(
-                "Lãi thấp nhất",
-                f"{min_interest:,.2f} triệu"
-            )
-
-        # ==========================================================
-        # KẾT LUẬN
-        # ==========================================================
-
-        st.divider()
-
-        st.subheader("📌 Kết luận")
-
-        if method == "Trả gốc đều":
-
-            st.info("""
-**Đặc điểm phương thức trả gốc đều**
-
-• Tiền gốc trả cố định mỗi tháng.
-
-• Tiền lãi giảm dần theo dư nợ.
-
-• Khoản thanh toán giảm dần theo thời gian.
-
-• Tổng tiền lãi thường thấp hơn so với trả góp đều.
+- Giảm số tiền vay.
+- Kéo dài thời hạn vay.
+- Hoặc tăng thu nhập trước khi quyết định vay.
 """)
 
-        else:
 
-            st.info("""
-**Đặc điểm phương thức trả góp đều (Annuity)**
+        # ======================================================
+        # Ý NGHĨA HAI PHƯƠNG THỨC
+        # ======================================================
 
-• Tổng tiền thanh toán mỗi tháng gần như bằng nhau.
+        with st.expander("📚 Ý nghĩa hai phương thức trả nợ"):
 
-• Các tháng đầu trả nhiều lãi hơn.
+            st.markdown("""
 
-• Các tháng cuối trả nhiều gốc hơn.
+### 1️⃣ Trả gốc đều
 
-• Phù hợp với người muốn ổn định dòng tiền hàng tháng.
+- Tiền gốc mỗi tháng bằng nhau.
+- Tiền lãi giảm dần theo dư nợ.
+- Khoản thanh toán tháng đầu cao hơn.
+- Tổng tiền lãi thấp hơn.
+
+---
+
+### 2️⃣ Trả góp đều (Annuity)
+
+- Tổng tiền thanh toán gần như bằng nhau mỗi tháng.
+- Giai đoạn đầu trả nhiều lãi hơn.
+- Dễ lập kế hoạch tài chính.
+- Tổng tiền lãi thường cao hơn trả gốc đều.
+
 """)
 
-        # ==========================================================
+
+        # ======================================================
+        # THÔNG TIN KHOẢN VAY
+        # ======================================================
+
+        st.subheader("📌 Thông tin khoản vay")
+
+        info = pd.DataFrame({
+
+            "Thông tin":[
+
+                "Mục đích vay",
+
+                "Số tiền vay",
+
+                "Lãi suất",
+
+                "Thời hạn",
+
+                "Thu nhập",
+
+                "Phương thức"
+
+            ],
+
+            "Giá trị":[
+
+                purpose,
+
+                money(loan),
+
+                f"{interest:.2f}%/năm",
+
+                f"{month} tháng",
+
+                money(income),
+
+                method
+
+            ]
+
+        })
+
+        st.table(info)
+
+
+
+        # ======================================================
         # FOOTER
-        # ==========================================================
+        # ======================================================
 
-        st.divider()
+        st.markdown("---")
 
         st.caption(
             """
 Ứng dụng được xây dựng phục vụ học tập môn **Công nghệ tài chính**.
 
-Chức năng:
-
-✔ Tính khoản vay
-
-✔ Hai phương thức trả nợ
-
-✔ Lịch trả nợ
-
-✔ Biểu đồ trực quan
-
-✔ Đánh giá khả năng trả nợ
-
-Đơn vị tính: **Triệu đồng**
+Các kết quả chỉ mang tính chất tham khảo trong tính toán khoản vay.
 """
         )
 
 else:
 
-    st.info("👈 Vui lòng nhập thông tin khoản vay ở thanh bên trái và nhấn **Tính toán**.")
+    st.info("""
+### 👋 Hướng dẫn sử dụng
+
+1. Nhập thông tin khoản vay ở thanh bên trái.
+
+2. Chọn phương thức trả nợ.
+
+3. Nhấn **TÍNH TOÁN**.
+
+Ứng dụng sẽ:
+
+- Tính gốc và lãi.
+- Hiển thị Dashboard.
+- Hiển thị lịch trả nợ.
+- Vẽ biểu đồ.
+- Đánh giá khả năng trả nợ.
+- So sánh hai phương thức trả nợ.
+""")
