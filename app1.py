@@ -337,46 +337,40 @@ if run:
             hide_index=True
         )
 
-        # ======================================================
-        # BIỂU ĐỒ
-        # ======================================================
-
-        st.subheader("📈 Trực quan khoản vay")
-
-        col_chart1, col_chart2 = st.columns(2)
-
         # ------------------------------
-        # Biểu đồ dư nợ còn lại qua từng năm
+        # Biểu đồ đường (Dư nợ theo năm)
         # ------------------------------
         with col_chart1:
-            # Lọc dữ liệu để lấy dư nợ cuối mỗi năm
+            # 1. Lọc dữ liệu lấy dư nợ vào cuối mỗi năm (Tháng chia hết cho 12)
             yearly_schedule = schedule[schedule["Tháng"] % 12 == 0].copy()
             yearly_schedule["Năm"] = yearly_schedule["Tháng"] // 12
             
-            # Thêm mốc năm 0 (dư nợ ban đầu)
+            # 2. Thêm mốc Năm 0 (Dư nợ ban đầu lúc mới vay)
             year_0 = pd.DataFrame({"Năm": [0], "Dư nợ": [loan]})
             yearly_schedule = pd.concat([year_0, yearly_schedule], ignore_index=True)
 
-            fig = px.bar(
+            # 3. Vẽ biểu đồ đường với các điểm đánh dấu (markers)
+            fig = px.line(
                 yearly_schedule,
                 x="Năm",
                 y="Dư nợ",
-                title="Dư nợ còn lại qua từng năm",
-                text="Dư nợ"
+                markers=True,
+                title="Dư nợ giảm theo thời gian"
             )
 
-            fig.update_traces(
-                textposition='outside', 
-                texttemplate='%{text:,.0f}'
-            )
-
+            # 4. Cập nhật giao diện (ép phông chữ Times New Roman và chỉnh màu)
             fig.update_layout(
                 height=420,
                 xaxis_title="Năm",
                 yaxis_title="Triệu đồng",
                 font=dict(family="Times New Roman", color="#222222"),
-                plot_bgcolor="white"
+                plot_bgcolor="white", # Nền trắng cho phần vẽ biểu đồ
+                margin=dict(l=20, r=20, t=40, b=20)
             )
+
+            # 5. Ép trục X hiển thị từng năm một (0, 1, 2, 3...) thay vì nhảy số
+            fig.update_xaxes(dtick=1, showgrid=True, gridcolor='lightgrey')
+            fig.update_yaxes(showgrid=True, gridcolor='lightgrey')
 
             st.plotly_chart(
                 fig,
