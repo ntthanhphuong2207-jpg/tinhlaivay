@@ -558,3 +558,19 @@ else:
 - Đánh giá khả năng trả nợ.
 - So sánh hai phương thức trả nợ.
 """)
+# ==========================================================
+# XỬ LÝ KHI NHẤN NÚT TÍNH TOÁN
+# ==========================================================
+
+if run:
+    if validate():
+        
+        # Thêm dòng này để gọi hiệu ứng tuyết rơi
+        st.snow()
+
+        if method == "Trả gốc đều":
+            schedule, total_interest = equal_principal(loan, interest, month)
+        else:
+            schedule, total_interest = annuity(loan, interest, month)
+            
+        # ... (các đoạn code tính toán bên dưới giữ nguyên) ...
