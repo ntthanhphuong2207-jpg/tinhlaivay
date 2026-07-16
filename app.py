@@ -145,17 +145,22 @@ interest=st.sidebar.number_input(
 
 )
 
-month=st.sidebar.slider(
+years = st.sidebar.slider(
 
-    "Thời hạn vay (tháng)",
+    "Thời hạn vay (năm)",
 
-    6,
+    min_value=1,
 
-    360,
+    max_value=30,
 
-    120
+    value=10,
+
+    step=1
 
 )
+
+# Quy đổi sang tháng để tính toán
+month = years * 12
 
 income=st.sidebar.number_input(
 
@@ -613,8 +618,9 @@ if run:
 
 
         comment = f"""
-Khoản vay **{money(loan)}**
-với thời hạn **{month} tháng**,
+Khoản vay ...
+
+với thời hạn **{years} năm ({month} tháng)**
 lãi suất **{interest:.2f}%/năm**
 theo phương thức **{method_text}**
 có tổng tiền lãi là **{money(total_interest)}**.
@@ -722,8 +728,8 @@ Khuyến nghị:
 
                 f"{interest:.2f}%/năm",
 
-                f"{month} tháng",
-
+                
+f"{years} năm ({month} tháng)",
                 money(income),
 
                 method
