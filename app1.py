@@ -278,12 +278,10 @@ if run:
 
         st.subheader("📊 KẾT QUẢ TÍNH TOÁN")
 
-        c1, c2, c3, c4, c5 = st.columns(5)
+        c1, c2, c3 = st.columns(3)
         c1.metric("💰 Tiền vay", money(loan))
         c2.metric("💸 Tổng lãi", money(total_interest))
         c3.metric("💳 Tổng thanh toán", money(total_payment))
-        c4.metric("📅 Tháng đầu", money(first_payment))
-        c5.metric("🏁 Tháng cuối", money(last_payment))
 
         # ======================================================
         # SO SÁNH HAI PHƯƠNG THỨC
