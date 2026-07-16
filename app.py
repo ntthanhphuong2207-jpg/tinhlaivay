@@ -326,7 +326,7 @@ if run:
 
             )
 
-        total_payment = loan + total_interest
+        total_payment = + total_interest
 
         first_payment = schedule.iloc[0]["Thanh toán"]
 
