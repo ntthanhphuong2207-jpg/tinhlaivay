@@ -500,26 +500,7 @@ Khuyến nghị:
 - Hoặc tăng thu nhập trước khi quyết định vay.
 """)
 
-        # ======================================================
-        # Ý NGHĨA HAI PHƯƠNG THỨC
-        # ======================================================
-
-        with st.expander("📚 Ý nghĩa hai phương thức trả nợ"):
-            st.markdown("""
-### 1️⃣ Trả gốc đều
-- Tiền gốc mỗi tháng bằng nhau.
-- Tiền lãi giảm dần theo dư nợ.
-- Khoản thanh toán tháng đầu cao hơn.
-- Tổng tiền lãi thấp hơn.
-
----
-### 2️⃣ Trả góp đều (Annuity)
-- Tổng tiền thanh toán gần như bằng nhau mỗi tháng.
-- Giai đoạn đầu trả nhiều lãi hơn.
-- Dễ lập kế hoạch tài chính.
-- Tổng tiền lãi thường cao hơn trả gốc đều.
-""")
-
+        
         # ======================================================
         # THÔNG TIN KHOẢN VAY
         # ======================================================
